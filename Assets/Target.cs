@@ -15,12 +15,12 @@ public class Target : MonoBehaviour
     }
 
     private Color[] stateColors = new Color[(int)eState.kNumStates]
-   {
+    {
         new Color(255, 0,   0),
         new Color(0,   255, 0),
         new Color(0,   0,   255),
         new Color(255, 255, 255)
-   };
+    };
 
     // External tunables.
     public float m_fHopTime = 0.2f;

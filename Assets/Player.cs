@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
 using UnityEngine;
 
 public class Player : MonoBehaviour
@@ -45,7 +47,7 @@ public class Player : MonoBehaviour
 
     public bool IsDiving()
     {
-        return (m_nState == eState.kDiving);
+        return m_nState == eState.kDiving;
     }
 
     void CheckForDive()
@@ -99,8 +101,23 @@ public class Player : MonoBehaviour
         }
     }
 
+    void RotatePlayer()
+    {
+        // Rotate the player's z by the target angle
+        transform.rotation = Quaternion.Euler(0, 0, m_fTargetAngle);
+    }
+
+    void Move()
+    {
+        // Move the player
+        transform.position += -1 * m_fTargetSpeed * transform.right;
+    }
+
     void FixedUpdate()
     {
         GetComponent<Renderer>().material.color = stateColors[(int)m_nState];
+        UpdateDirectionAndSpeed();
+        RotatePlayer();
+        Move();
     }
 }
