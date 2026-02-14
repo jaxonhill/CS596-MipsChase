@@ -1,7 +1,3 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Data.Common;
 using UnityEngine;
 
 public class Player : MonoBehaviour
@@ -19,14 +15,15 @@ public class Player : MonoBehaviour
     public float m_fDiveDistance = 3.0f;
 
     // Internal variables.
+    public eState m_nState;
     public Vector3 m_vDiveStartPos;
     public Vector3 m_vDiveEndPos;
-    public float m_fAngle;
-    public float m_fSpeed;
+    public float m_fDiveStartTime;
+    public float m_fDiveRecoveryStartTime;
     public float m_fTargetSpeed;
     public float m_fTargetAngle;
-    public eState m_nState;
-    public float m_fDiveStartTime;
+    public float m_fAngle;
+    public float m_fSpeed;
 
     public enum eState : int
     {
@@ -39,40 +36,113 @@ public class Player : MonoBehaviour
 
     private Color[] stateColors = new Color[(int)eState.kNumStates]
     {
-        new Color(0,     0,   0),
-        new Color(255, 255, 255),
-        new Color(0,     0, 255),
-        new Color(0,   255,   0),
+        new(0,     0,   0),
+        new(255, 255, 255),
+        new(0,     0, 255),
+        new(0,   255,   0),
     };
+
+    // -- STATE: Diving --
 
     public bool IsDiving()
     {
         return m_nState == eState.kDiving;
     }
 
-    void CheckForDive()
+    private void Dive()
     {
-        if (Input.GetMouseButton(0) && (m_nState != eState.kDiving && m_nState != eState.kRecovering))
-        {
-            // Start the dive operation
-            m_nState = eState.kDiving;
-            m_fSpeed = 0.0f;
+        // TODO: Make it actually move the player over an elapsed time toward target position
 
-            // Store starting parameters.
-            m_vDiveStartPos = transform.position;
-            m_vDiveEndPos = m_vDiveStartPos - (transform.right * m_fDiveDistance);
-            m_fDiveStartTime = Time.time;
-        }
+        // Action: Move in direction of dive, attach rabbit if within reach, ignore any other input.
+        // Linear movement from a -> b
+        // Given time and distance -> determine velocity (speed)
+        // Simplest version is to just teleport the player to the end position
+
+        transform.position = m_vDiveEndPos;
+    } 
+
+    private bool DoesWantToDive()
+    {
+        return Input.GetMouseButton(0);
+    }
+
+    private void StartDive()
+    {
+        m_nState = eState.kDiving; 
+        m_fSpeed = 0.0f;
+        m_vDiveStartPos = transform.position;
+        m_vDiveEndPos = m_vDiveStartPos - (transform.right * m_fDiveDistance);
+        m_fDiveStartTime = Time.time;
+    }
+
+    private bool IsDiveTimeLimitReached()
+    {
+        float currentTime = Time.time;
+        float elapsedTime = currentTime - m_fDiveStartTime;
+        return elapsedTime >= m_fDiveTime;
+    }
+
+    // -- STATE: Recovering -- 
+    
+    private void StartRecovering()
+    {
+        m_nState = eState.kRecovering;
+        m_fSpeed = 0.0f;
+        m_fDiveRecoveryStartTime = Time.time;
+    }
+
+    private bool IsRecoveringTimeLimitReached()
+    {
+        float currentTime = Time.time;
+        float elapsedTime = currentTime - m_fDiveRecoveryStartTime;
+        return elapsedTime >= m_fDiveRecoveryTime;
     }
 
     void Start()
     {
-        // Initialize variables.
         m_fAngle = 0;
         m_fSpeed = 0;
         m_nState = eState.kMoveSlow;
     }
 
+    void FixedUpdate()
+    {
+        switch (m_nState)
+        {
+            case eState.kMoveSlow:
+                // Move Slow:
+                    // Rotation angle can change immediately
+                    // Move with slow speed
+
+                if (m_fSpeed > m_fSlowSpeed) { m_nState = eState.kMoveFast; };
+                if (DoesWantToDive()) { StartDive(); };
+                break;
+            case eState.kMoveFast:
+                // Move Fast:
+                    // Rotation cannot exceed a small threshold
+                    // If rotation thresh. is met, player continues in original dir., but starts slowing down
+                if (m_fSpeed < m_fSlowSpeed) { m_nState = eState.kMoveSlow; };
+                if (DoesWantToDive()) { StartDive(); };
+                break;
+            case eState.kDiving:
+                Dive();
+                if (IsDiveTimeLimitReached()) { StartRecovering(); };
+                break;
+            case eState.kRecovering:
+                if (IsRecoveringTimeLimitReached()) { m_nState = eState.kMoveSlow; }
+                break;
+            default:
+                break;
+        }
+
+        // Actions to perform regardless of state
+        GetComponent<Renderer>().material.color = stateColors[(int)m_nState];
+        UpdateDirectionAndSpeed();
+    }
+
+    // -- Functions that probably need to change later --
+
+    // Given this function as starter
     void UpdateDirectionAndSpeed()
     {
         // Get relative positions between the mouse and player
@@ -101,23 +171,16 @@ public class Player : MonoBehaviour
         }
     }
 
+    // Prev. simple rotate code without states
     void RotatePlayer()
     {
-        // Rotate the player's z by the target angle
         transform.rotation = Quaternion.Euler(0, 0, m_fTargetAngle);
     }
 
+    // Prev. simple move code without states
     void Move()
     {
-        // Move the player
         transform.position += -1 * m_fTargetSpeed * transform.right;
     }
 
-    void FixedUpdate()
-    {
-        GetComponent<Renderer>().material.color = stateColors[(int)m_nState];
-        UpdateDirectionAndSpeed();
-        RotatePlayer();
-        Move();
-    }
 }
