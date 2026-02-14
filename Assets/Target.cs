@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Target : MonoBehaviour
@@ -30,9 +28,45 @@ public class Target : MonoBehaviour
 
     // Internal variables.
     public eState m_nState;
-    public float m_fHopStart;
-    public Vector3 m_vHopStartPos;
-    public Vector3 m_vHopEndPos;
+    public float m_fHopStartTime;
+    public Vector2 m_fHopDirection; 
+
+    private bool IsInScaredDistance()
+    {
+        Vector2 playerPosition = (Vector2)m_player.transform.position;
+        float distanceFromPlayer = Vector2.Distance((Vector2)transform.position, playerPosition);
+        return distanceFromPlayer < m_fScaredDistance;
+    }
+
+    private Vector2 CalculateHopDirection()
+    {
+        Vector2 playerPosition = (Vector2)m_player.transform.position;
+        Vector2 targetPosition = (Vector2)transform.position;
+
+        Vector2 vectorBetween = targetPosition - playerPosition;
+        Vector2 directionToHop = vectorBetween.normalized;
+
+        return directionToHop;
+    }
+
+    private bool IsHopTimeLimitReached()
+    {
+        float currentTime = Time.time;
+        float elapsedTime = currentTime - m_fHopStartTime;
+        return elapsedTime >= m_fHopTime;
+    }
+
+    private void StartHop()
+    {
+        m_nState = eState.kHop;
+        m_fHopStartTime = Time.time;
+        m_fHopDirection = CalculateHopDirection();
+    }
+
+    private void Move()
+    {
+        transform.position += m_fHopSpeed * Time.fixedDeltaTime * (Vector3)m_fHopDirection;
+    }
 
     void Start()
     {
@@ -44,6 +78,21 @@ public class Target : MonoBehaviour
     void FixedUpdate()
     {
         GetComponent<Renderer>().material.color = stateColors[(int)m_nState];
+
+        switch (m_nState)
+        {
+            case eState.kIdle:
+                if (IsInScaredDistance()) { StartHop(); };
+                break;
+            case eState.kHop:
+                Move();
+                if (IsHopTimeLimitReached()) { m_nState = eState.kIdle; } 
+                break;
+            case eState.kCaught:
+                break;
+            default:
+                break;
+        } 
     }
 
     void OnTriggerStay2D(Collider2D collision)
