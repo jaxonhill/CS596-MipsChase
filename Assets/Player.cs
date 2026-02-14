@@ -3,8 +3,9 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     // External tunables.
-    static public float m_fMaxSpeed = 0.10f;
-    public float m_fSlowSpeed = m_fMaxSpeed * 0.66f;
+    static public float m_fMaxSpeed = 5f;
+    public float m_fFastThreshold = m_fMaxSpeed * 0.66f;
+    public float m_fSlowSpeed = m_fMaxSpeed * 0.33f;
     public float m_fIncSpeed = 0.0025f;
     public float m_fMagnitudeFast = 0.6f;
     public float m_fMagnitudeSlow = 0.06f;
@@ -49,17 +50,10 @@ public class Player : MonoBehaviour
         return m_nState == eState.kDiving;
     }
 
-    private void Dive()
+    private void Move()
     {
-        // TODO: Make it actually move the player over an elapsed time toward target position
-
-        // Action: Move in direction of dive, attach rabbit if within reach, ignore any other input.
-        // Linear movement from a -> b
-        // Given time and distance -> determine velocity (speed)
-        // Simplest version is to just teleport the player to the end position
-
-        transform.position = m_vDiveEndPos;
-    } 
+        transform.position += -1 * m_fSpeed * Time.fixedDeltaTime * transform.right;
+    }
 
     private bool DoesWantToDive()
     {
@@ -69,10 +63,12 @@ public class Player : MonoBehaviour
     private void StartDive()
     {
         m_nState = eState.kDiving; 
-        m_fSpeed = 0.0f;
+
         m_vDiveStartPos = transform.position;
         m_vDiveEndPos = m_vDiveStartPos - (transform.right * m_fDiveDistance);
         m_fDiveStartTime = Time.time;
+
+        m_fSpeed = m_fDiveDistance / m_fDiveTime;
     }
 
     private bool IsDiveTimeLimitReached()
@@ -98,11 +94,33 @@ public class Player : MonoBehaviour
         return elapsedTime >= m_fDiveRecoveryTime;
     }
 
+    private void StartMoveSlow()
+    {
+        m_nState = eState.kMoveSlow;
+        m_fSpeed = m_fSlowSpeed;
+    }
+
+    private void StartMoveFast()
+    {
+        m_nState = eState.kMoveFast;
+        m_fSpeed = m_fFastThreshold;
+    }
+
+    void InstantRotate()
+    {
+        transform.rotation = Quaternion.Euler(0, 0, m_fTargetAngle);
+    }
+
+    // TODO: Implement for fast movement
+    void IncrementalRotate()
+    {
+        return;
+    }
+
     void Start()
     {
         m_fAngle = 0;
-        m_fSpeed = 0;
-        m_nState = eState.kMoveSlow;
+        StartMoveSlow();
     }
 
     void FixedUpdate()
@@ -110,26 +128,25 @@ public class Player : MonoBehaviour
         switch (m_nState)
         {
             case eState.kMoveSlow:
-                // Move Slow:
-                    // Rotation angle can change immediately
-                    // Move with slow speed
+                InstantRotate();
+                Move();
+                // TODO: Figure out speed incrementing 
 
-                if (m_fSpeed > m_fSlowSpeed) { m_nState = eState.kMoveFast; };
+                if (m_fSpeed > m_fFastThreshold) { StartMoveFast(); };
                 if (DoesWantToDive()) { StartDive(); };
                 break;
             case eState.kMoveFast:
-                // Move Fast:
-                    // Rotation cannot exceed a small threshold
-                    // If rotation thresh. is met, player continues in original dir., but starts slowing down
-                if (m_fSpeed < m_fSlowSpeed) { m_nState = eState.kMoveSlow; };
+                // TODO: Implement fast movement logic
+
+                if (m_fSpeed < m_fFastThreshold) { StartMoveSlow(); };
                 if (DoesWantToDive()) { StartDive(); };
                 break;
             case eState.kDiving:
-                Dive();
+                Move();
                 if (IsDiveTimeLimitReached()) { StartRecovering(); };
                 break;
             case eState.kRecovering:
-                if (IsRecoveringTimeLimitReached()) { m_nState = eState.kMoveSlow; }
+                if (IsRecoveringTimeLimitReached()) { StartMoveSlow(); }
                 break;
             default:
                 break;
@@ -139,8 +156,6 @@ public class Player : MonoBehaviour
         GetComponent<Renderer>().material.color = stateColors[(int)m_nState];
         UpdateDirectionAndSpeed();
     }
-
-    // -- Functions that probably need to change later --
 
     // Given this function as starter
     void UpdateDirectionAndSpeed()
@@ -170,17 +185,4 @@ public class Player : MonoBehaviour
             m_fTargetSpeed = 0.0f;
         }
     }
-
-    // Prev. simple rotate code without states
-    void RotatePlayer()
-    {
-        transform.rotation = Quaternion.Euler(0, 0, m_fTargetAngle);
-    }
-
-    // Prev. simple move code without states
-    void Move()
-    {
-        transform.position += -1 * m_fTargetSpeed * transform.right;
-    }
-
 }
