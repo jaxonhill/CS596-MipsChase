@@ -220,7 +220,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7584827978028588409, guid: e2ee0c231ba124841927c2b7ea5b8bd0, type: 3}
       propertyPath: m_fIncSpeed
-      value: 0.0025
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: -7584827978028588409, guid: e2ee0c231ba124841927c2b7ea5b8bd0, type: 3}
       propertyPath: m_fSlowSpeed
@@ -228,11 +228,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7584827978028588409, guid: e2ee0c231ba124841927c2b7ea5b8bd0, type: 3}
       propertyPath: m_fFastRotateMax
-      value: 10
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: -7584827978028588409, guid: e2ee0c231ba124841927c2b7ea5b8bd0, type: 3}
+      propertyPath: m_fFastThreshold
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: -7584827978028588409, guid: e2ee0c231ba124841927c2b7ea5b8bd0, type: 3}
       propertyPath: m_fMagnitudeFast
       value: 0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: -7584827978028588409, guid: e2ee0c231ba124841927c2b7ea5b8bd0, type: 3}
+      propertyPath: m_fFastRotateSpeed
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 2572352322406527498, guid: e2ee0c231ba124841927c2b7ea5b8bd0, type: 3}
       propertyPath: m_Name

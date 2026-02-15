@@ -1,16 +1,17 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class Player : MonoBehaviour
 {
     // External tunables.
-    static public float m_fMaxSpeed = 5f;
-    public float m_fFastThreshold = m_fMaxSpeed * 0.66f;
+    static public float m_fMaxSpeed = 5.0f;
+    public float m_fFastThreshold = m_fMaxSpeed * 0.8f;
     public float m_fSlowSpeed = m_fMaxSpeed * 0.33f;
-    public float m_fIncSpeed = 0.0025f;
+    public float m_fIncSpeed = 0.01f;
     public float m_fMagnitudeFast = 0.6f;
     public float m_fMagnitudeSlow = 0.06f;
-    public float m_fFastRotateSpeed = 0.2f;
-    public float m_fFastRotateMax = 10.0f;
+    public float m_fFastRotateSpeed = 2.0f;
+    public float m_fFastRotateMax = 15.0f;
     public float m_fDiveTime = 0.3f;
     public float m_fDiveRecoveryTime = 0.5f;
     public float m_fDiveDistance = 3.0f;
@@ -23,7 +24,6 @@ public class Player : MonoBehaviour
     public float m_fDiveRecoveryStartTime;
     public float m_fTargetSpeed;
     public float m_fTargetAngle;
-    public float m_fAngle;
     public float m_fSpeed;
 
     public enum eState : int
@@ -48,11 +48,6 @@ public class Player : MonoBehaviour
     public bool IsDiving()
     {
         return m_nState == eState.kDiving;
-    }
-
-    private void Move()
-    {
-        transform.position += -1 * m_fSpeed * Time.fixedDeltaTime * transform.right;
     }
 
     private bool DoesWantToDive()
@@ -94,16 +89,12 @@ public class Player : MonoBehaviour
         return elapsedTime >= m_fDiveRecoveryTime;
     }
 
+    // -- STATE: Move Slow -- 
+    
     private void StartMoveSlow()
     {
         m_nState = eState.kMoveSlow;
         m_fSpeed = m_fSlowSpeed;
-    }
-
-    private void StartMoveFast()
-    {
-        m_nState = eState.kMoveFast;
-        m_fSpeed = m_fFastThreshold;
     }
 
     void InstantRotate()
@@ -111,53 +102,42 @@ public class Player : MonoBehaviour
         transform.rotation = Quaternion.Euler(0, 0, m_fTargetAngle);
     }
 
-    // TODO: Implement for fast movement
+    // -- STATE: Move Fast --
+
+    private void StartMoveFast()
+    {
+        m_nState = eState.kMoveFast;
+    }
+
     void IncrementalRotate()
     {
-        return;
-    }
+        float currentAngle = transform.eulerAngles.z;
 
-    void Start()
-    {
-        m_fAngle = 0;
-        StartMoveSlow();
-    }
+        float angleDiff = Mathf.DeltaAngle(currentAngle, m_fTargetAngle);
+        float absDiff = Mathf.Abs(angleDiff);
+        bool isExceedingThreshold = absDiff >= m_fFastRotateMax;
 
-    void FixedUpdate()
-    {
-        switch (m_nState)
+        if (isExceedingThreshold)
         {
-            case eState.kMoveSlow:
-                InstantRotate();
-                Move();
-                // TODO: Figure out speed incrementing 
-
-                if (m_fSpeed > m_fFastThreshold) { StartMoveFast(); };
-                if (DoesWantToDive()) { StartDive(); };
-                break;
-            case eState.kMoveFast:
-                // TODO: Implement fast movement logic
-
-                if (m_fSpeed < m_fFastThreshold) { StartMoveSlow(); };
-                if (DoesWantToDive()) { StartDive(); };
-                break;
-            case eState.kDiving:
-                Move();
-                if (IsDiveTimeLimitReached()) { StartRecovering(); };
-                break;
-            case eState.kRecovering:
-                if (IsRecoveringTimeLimitReached()) { StartMoveSlow(); }
-                break;
-            default:
-                break;
+            m_fSpeed -= m_fIncSpeed;
+        } 
+        else
+        {
+            m_fSpeed += m_fIncSpeed;
         }
 
-        // Actions to perform regardless of state
-        GetComponent<Renderer>().material.color = stateColors[(int)m_nState];
-        UpdateDirectionAndSpeed();
+        // Move towards the angle regardless if we were exceeding threshold
+        float finalRotation = Mathf.MoveTowardsAngle(currentAngle, m_fTargetAngle, m_fFastRotateSpeed);
+        transform.rotation = Quaternion.Euler(0, 0, finalRotation);
     }
 
-    // Given this function as starter
+    // -- GENERAL --
+
+    private void Move()
+    {
+        transform.position += -1 * m_fSpeed * Time.fixedDeltaTime * transform.right;
+    }
+
     void UpdateDirectionAndSpeed()
     {
         // Get relative positions between the mouse and player
@@ -185,4 +165,45 @@ public class Player : MonoBehaviour
             m_fTargetSpeed = 0.0f;
         }
     }
+
+    void Start()
+    {
+        StartMoveSlow();
+    }
+
+    void FixedUpdate()
+    {
+        switch (m_nState)
+        {
+            case eState.kMoveSlow:
+                InstantRotate();
+                Move();
+                m_fSpeed += m_fIncSpeed;
+
+                if (m_fSpeed > m_fFastThreshold) { StartMoveFast(); };
+                if (DoesWantToDive()) { StartDive(); };
+                break;
+            case eState.kMoveFast:
+                IncrementalRotate();
+                Move();
+
+                if (m_fSpeed < m_fFastThreshold) { StartMoveSlow(); };
+                if (DoesWantToDive()) { StartDive(); };
+                break;
+            case eState.kDiving:
+                Move();
+                if (IsDiveTimeLimitReached()) { StartRecovering(); };
+                break;
+            case eState.kRecovering:
+                if (IsRecoveringTimeLimitReached()) { StartMoveSlow(); }
+                break;
+            default:
+                break;
+        }
+
+        // Actions to perform regardless of state
+        GetComponent<Renderer>().material.color = stateColors[(int)m_nState];
+        UpdateDirectionAndSpeed();
+    }
+
 }
