@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class Target : MonoBehaviour
@@ -25,6 +26,7 @@ public class Target : MonoBehaviour
     public float m_fHopSpeed = 6.5f;
     public float m_fScaredDistance = 3.0f;
     public int m_nMaxMoveAttempts = 50;
+    public int boundsMargin = 1;
 
     // Internal variables.
     public eState m_nState;
@@ -38,15 +40,41 @@ public class Target : MonoBehaviour
         return distanceFromPlayer < m_fScaredDistance;
     }
 
+    private bool WillHopBeInBounds(Vector2 hopDirection)
+    {
+        Vector2 currentPosition = (Vector2)transform.position;
+        Vector2 displacement = m_fHopSpeed * m_fHopTime * hopDirection;
+        Vector2 endPosition = currentPosition + displacement; 
+
+        Vector2 min = Camera.main.ScreenToWorldPoint(new Vector2(0, 0));
+        Vector2 max = Camera.main.ScreenToWorldPoint(new Vector2(Screen.width, Screen.height));
+
+        // Account for margin on edges of screen so we can see the rabbit
+        min += Vector2.one * boundsMargin;
+        max -= Vector2.one * boundsMargin;
+
+        return endPosition.x >= min.x && endPosition.x <= max.x && endPosition.y >= min.y && endPosition.y <= max.y;
+    }
+
     private Vector2 CalculateHopDirection()
     {
         Vector2 playerPosition = (Vector2)m_player.transform.position;
         Vector2 targetPosition = (Vector2)transform.position;
-
         Vector2 vectorBetween = targetPosition - playerPosition;
-        Vector2 directionToHop = vectorBetween.normalized;
 
-        return directionToHop;
+        // away >> left >> right >> towards
+        Vector2 awayFromPlayer = vectorBetween.normalized;
+        Vector2 left  = new Vector2(-awayFromPlayer.y,  awayFromPlayer.x);
+        Vector2 right = new Vector2(awayFromPlayer.y, -awayFromPlayer.x);
+        Vector2 towardsPlayer = -1 * awayFromPlayer;
+        Vector2[] directionOptions = { awayFromPlayer, left, right, towardsPlayer };
+
+        foreach (Vector2 dir in directionOptions)
+        {
+            if (WillHopBeInBounds(dir)) { return dir; }
+        }
+
+        return Vector2.zero; // edge case that should never happen, but don't move if nothing is valid.
     }
 
     private bool IsHopTimeLimitReached()
